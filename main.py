@@ -29,7 +29,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 # ============================================================
 API_BASE = "https://backend.inversioneshasbun.com/api"
 # Nuevo scraper "sego": recibe la URL completa del producto como parámetro `url`
-SCRAPER_URL = "http://localhost:34095/hasbun/scrapers/sego"
+SCRAPER_URL = "https://pc.skrifna.uk/hasbun/scrapers/sego"
 STOCK_DEFAULT = int("10")
 CONCURRENCIA = int("4")          # 4 cabezas de IA en paralelo, EN LOTES
 TIMEOUT_SCRAPER = float("120.0")  # el scraper con IA puede tardar
