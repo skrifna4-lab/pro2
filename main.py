@@ -171,7 +171,7 @@ def leer_excel(path: str):
         ws = wb[nombre_hoja]
         categoria_nombre = nombre_hoja.strip().replace(" ", "-")
         productos = []
-        for fila in ws.iter_rows(min_row=1, max_col=6):
+        for fila in ws.iter_rows(min_row=2, max_col=6):
             cell_codigo = fila[0]
             codigo = extraer_codigo(cell_codigo)
             if not codigo:
@@ -294,7 +294,23 @@ async def asegurar_marca(client: httpx.AsyncClient, nombre: str):
 # ============================================================
 # VALIDACIÓN + PAYLOAD
 # ============================================================
-def validar_ficha_scraper(json_, precio_compra_excel, precio_venta_excel):
+def obtener_codigo_fabrica(g, codigo_excel):
+    """
+    La API sego ya NO devuelve `general.code`. Ahora manda el SKU en
+    `general.kd_fabrica` (y también en `general.modelo`, duplicado).
+    Se prueban esos campos en orden y, si ninguno vino, se usa el código
+    que ya conocíamos por el propio Excel (columna A) como último respaldo.
+    """
+    return (
+        g.get("code")
+        or g.get("kd_fabrica")
+        or g.get("modelo")
+        or codigo_excel
+        or None
+    )
+
+
+def validar_ficha_scraper(json_, precio_compra_excel, precio_venta_excel, codigo_excel):
     if json_.get("__networkError"):
         return [f"No se pudo contactar al scraper (¿está corriendo en {SCRAPER_URL}?): {json_['message']}"]
     if json_.get("__httpError"):
@@ -308,7 +324,7 @@ def validar_ficha_scraper(json_, precio_compra_excel, precio_venta_excel):
     problemas = []
     if not g.get("nombre"):
         problemas.append("Falta el nombre del producto")
-    if not g.get("code"):
+    if not obtener_codigo_fabrica(g, codigo_excel):
         problemas.append("Falta el código de fábrica")
     if not d.get("descripcion"):
         problemas.append("Falta la descripción")
@@ -324,14 +340,14 @@ def validar_ficha_scraper(json_, precio_compra_excel, precio_venta_excel):
     return problemas
 
 
-def construir_payload(json_, categoria_id, marca_id, precio_compra_excel, precio_venta_excel):
+def construir_payload(json_, categoria_id, marca_id, precio_compra_excel, precio_venta_excel, codigo_excel):
     d = json_["data"]
     g = d["general"]
     urls = d.get("urls_automatizadas") or {}
 
     return {
         "NOMBRE": g.get("nombre"),
-        "KODIGO_FABIRKANTE": g.get("code"),
+        "KODIGO_FABIRKANTE": obtener_codigo_fabrica(g, codigo_excel),
         "IMG_PROTADA": g.get("img_principal"),
         "DESCRIPCION": d.get("descripcion"),
         "AUDIO": urls.get("audio_descripcion") or "",
@@ -468,7 +484,7 @@ async def procesar_archivo(path: str, nombre_archivo: str):
                     scraper_json = await fetch_json_safe(
                         client, f"{SCRAPER_URL}?url={quote(url_producto, safe='')}"
                     )
-                    problemas = validar_ficha_scraper(scraper_json, precio_compra_excel, precio_venta_excel)
+                    problemas = validar_ficha_scraper(scraper_json, precio_compra_excel, precio_venta_excel, codigo)
 
                     if problemas:
                         log_update(log_id, "error", codigo, " | ".join(problemas))
@@ -483,7 +499,7 @@ async def procesar_archivo(path: str, nombre_archivo: str):
                     marca_nombre = (scraper_json.get("data", {}).get("general", {}) or {}).get("marca")
                     marca_id = await asegurar_marca(client, marca_nombre)
                     payload = construir_payload(
-                        scraper_json, categoria_id, marca_id, precio_compra_excel, precio_venta_excel
+                        scraper_json, categoria_id, marca_id, precio_compra_excel, precio_venta_excel, codigo
                     )
 
                     try:
