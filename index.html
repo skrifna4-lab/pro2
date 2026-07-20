@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Categorizer Pro - Sincro Inteligente</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #070707;
+            --card-bg: #111111;
+            --accent-red: #e61e43;
+            --accent-green: #10b981;
+            --accent-yellow: #f59e0b;
+            --glow-red: rgba(230, 30, 67, 0.6);
+            --glow-green: rgba(16, 185, 129, 0.5);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .upload-card-rect {
+            background: var(--card-bg);
+            width: 100%;
+            max-width: 850px;
+            min-height: 380px;
+            padding: 40px;
+            border-radius: 32px;
+            border: 1px solid #1a1a1a;
+            display: flex;
+            align-items: center;
+            gap: 50px;
+            position: relative;
+            box-shadow: 0 40px 100px rgba(0,0,0,0.8);
+            z-index: 10;
+        }
+
+        .aura-container {
+            flex-shrink: 0;
+            width: 280px;
+            height: 280px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .aura-ring {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            border: 2px solid var(--accent-red);
+            border-radius: 50%;
+            opacity: 0;
+            animation: expand-aura 2.5s infinite;
+        }
+
+        @keyframes expand-aura {
+            0% { transform: scale(0.8); opacity: 0.8; filter: blur(2px); }
+            100% { transform: scale(2.2); opacity: 0; filter: blur(10px); }
+        }
+
+        .upload-icon-circle {
+            width: 80px;
+            height: 80px;
+            background: #1a1a1a;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent-red);
+            border: 1px solid #333;
+            z-index: 20;
+            box-shadow: 0 0 30px rgba(230, 30, 67, 0.2);
+        }
+
+        #globalOverlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.98);
+            backdrop-filter: blur(25px);
+            z-index: 1000;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .global-spinner {
+            width: 70px;
+            height: 70px;
+            border: 3px solid rgba(255, 255, 255, 0.03);
+            border-top: 3px solid var(--accent-red);
+            border-radius: 50%;
+            animation: spin 0.8s infinite linear;
+            box-shadow: 0 0 50px var(--glow-red);
+            margin: 0 auto 20px auto;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .status-container {
+            text-align: center;
+            max-width: 700px;
+            width: 100%;
+        }
+
+        .status-main-text {
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            color: #fff;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .status-sub-text {
+            font-size: 16px;
+            font-weight: 300;
+            color: #666;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .progress-wrap {
+            width: 100%;
+            max-width: 700px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .progress-bar-track {
+            flex-grow: 1;
+            height: 6px;
+            background: #1a1a1a;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--accent-red), #ff5577);
+            transition: width 0.4s ease;
+            box-shadow: 0 0 15px var(--glow-red);
+        }
+        .progress-pct {
+            font-family: monospace;
+            font-size: 13px;
+            color: #888;
+            flex-shrink: 0;
+            width: 42px;
+            text-align: right;
+        }
+
+        #logBox {
+            width: 100%;
+            max-width: 700px;
+            max-height: 360px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 4px;
+        }
+        #logBox::-webkit-scrollbar { width: 6px; }
+        #logBox::-webkit-scrollbar-thumb { background: #262626; border-radius: 10px; }
+
+        .track-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: #0d0d0d;
+            border: 1px solid #1c1c1c;
+            border-radius: 14px;
+            padding: 12px 16px;
+            text-align: left;
+            transition: border-color 0.25s ease, background 0.25s ease;
+            animation: cardIn 0.3s ease;
+        }
+        @keyframes cardIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: translateY(0);} }
+
+        .track-card.is-cat {
+            background: rgba(167, 139, 250, 0.06);
+            border-color: rgba(167, 139, 250, 0.25);
+        }
+        .track-card.is-loading { border-color: #2a2a2a; }
+        .track-card.is-success { border-color: rgba(16, 185, 129, 0.35); background: rgba(16, 185, 129, 0.05); }
+        .track-card.is-error { border-color: rgba(230, 30, 67, 0.35); background: rgba(230, 30, 67, 0.05); }
+        .track-card.is-warn { border-color: rgba(245, 158, 11, 0.35); background: rgba(245, 158, 11, 0.05); }
+
+        .track-icon {
+            flex-shrink: 0;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            background: #161616;
+        }
+        .track-icon.mini-spinner {
+            border: 2px solid rgba(255,255,255,0.08);
+            border-top: 2px solid var(--accent-red);
+            animation: spin 0.7s infinite linear;
+        }
+        .is-success .track-icon { background: var(--accent-green); color: #04140f; }
+        .is-error .track-icon { background: var(--accent-red); color: #1a0508; }
+        .is-warn .track-icon { background: var(--accent-yellow); color: #241a04; }
+        .is-cat .track-icon { background: #a78bfa; color: #1a1230; font-weight: 900; }
+
+        .track-body { flex-grow: 1; min-width: 0; }
+        .track-title { font-size: 13.5px; font-weight: 700; color: #eee; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .track-sub { font-size: 12px; color: #666; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .is-success .track-sub { color: #5fcfa8; }
+        .is-error .track-sub { color: #ee7188; }
+        .is-warn .track-sub { color: #e0ac4d; }
+        .track-time { flex-shrink: 0; font-size: 11px; color: #444; font-family: monospace; }
+
+        #successUI {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            animation: emergeSuccess 0.8s cubic-bezier(0.19, 1, 0.22, 1);
+            width: 100%;
+        }
+
+        @keyframes emergeSuccess {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .success-icon-main {
+            width: 110px;
+            height: 110px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            box-shadow: 0 0 70px var(--glow-green);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            width: 100%;
+            max-width: 700px;
+            margin: 25px 0;
+        }
+        .stat-box {
+            background: #0d0d0d;
+            border: 1px solid #1e1e1e;
+            border-radius: 14px;
+            padding: 16px 8px;
+        }
+        .stat-num { font-size: 28px; font-weight: 900; }
+        .stat-label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+
+        .drop-zone-rect {
+            margin-top: 25px;
+            border: 2px dashed #222;
+            border-radius: 22px;
+            padding: 28px 32px;
+            cursor: pointer;
+            background: rgba(255,255,255,0.012);
+            transition: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .drop-zone-rect::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: radial-gradient(circle at 0% 0%, rgba(230,30,67,0.08), transparent 60%);
+            opacity: 0;
+            transition: opacity 0.35s ease;
+        }
+        .drop-zone-rect:hover {
+            border-color: var(--accent-red);
+            background: rgba(230, 30, 67, 0.045);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(230,30,67,0.15);
+        }
+        .drop-zone-rect:hover::before { opacity: 1; }
+        .drop-zone-rect:active { transform: translateY(0); }
+
+        .drop-icon-box {
+            background: #1a1a1a;
+            padding: 14px;
+            border-radius: 14px;
+            border: 1px solid #333;
+            transition: 0.3s ease;
+        }
+        .drop-zone-rect:hover .drop-icon-box {
+            border-color: var(--accent-red);
+            box-shadow: 0 0 20px rgba(230,30,67,0.25);
+        }
+        .drop-hint-badge {
+            display: inline-block;
+            margin-top: 10px;
+            font-size: 11px;
+            color: #555;
+            background: #161616;
+            border: 1px solid #262626;
+            padding: 3px 10px;
+            border-radius: 20px;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-action {
+            padding: 16px 34px;
+            border-radius: 16px;
+            font-weight: 800;
+            cursor: pointer;
+            border: none;
+            font-size: 15px;
+            transition: 0.3s;
+        }
+        .btn-red { background: var(--accent-red); color: white; box-shadow: 0 15px 40px var(--glow-red); }
+        .btn-outline { background: transparent; border: 1px solid #333; color: #aaa; }
+        .btn-outline:hover { border-color: var(--accent-green); color: var(--accent-green); }
+
+        .server-note {
+            margin-top: 18px;
+            font-size: 12px;
+            color: #3a3a3a;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .server-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--accent-green);
+            box-shadow: 0 0 8px var(--accent-green);
+        }
+        .server-dot.off { background: var(--accent-red); box-shadow: 0 0 8px var(--accent-red); }
+
+        .hidden { display: none !important; }
+        .flex { display: flex !important; }
+    </style>
+</head>
+<body>
+
+    <div id="globalOverlay">
+        <!-- ESTADO DE PROCESAMIENTO -->
+        <div id="processingUI" class="flex flex-col items-center" style="width:100%;">
+            <div class="global-spinner"></div>
+            <div class="status-container">
+                <div class="status-main-text" id="statusTitle">Iniciando Sistema</div>
+                <div class="status-sub-text" id="statusDetail">Cargando módulos de análisis...</div>
+            </div>
+            <div class="progress-wrap">
+                <div class="progress-bar-track"><div class="progress-bar-fill" id="progressFill"></div></div>
+                <div class="progress-pct" id="progressPct">0%</div>
+            </div>
+            <div id="logBox"></div>
+            <p style="font-size:11px; color:#333; margin-top:14px;">
+                Este proceso corre en el servidor. Puedes cerrar esta pestaña y volver luego a la misma URL — seguirá trabajando.
+            </p>
+        </div>
+
+        <!-- ÉXITO / RESUMEN FINAL -->
+        <div id="successUI">
+            <div class="success-icon-main">
+                <svg width="55" height="55" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="4"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </div>
+            <h1 style="font-size: 38px; font-weight: 900; margin-bottom: 6px; letter-spacing: -1px;">SINCRONIZACIÓN FINALIZADA</h1>
+            <p id="successInfo" style="color: #666; font-size: 16px;">Proceso completado.</p>
+
+            <div class="stats-grid">
+                <div class="stat-box"><div class="stat-num" id="statCategorias" style="color:#a78bfa;">0</div><div class="stat-label">Categorías</div></div>
+                <div class="stat-box"><div class="stat-num" id="statExitosos" style="color:var(--accent-green);">0</div><div class="stat-label">Subidos OK</div></div>
+                <div class="stat-box"><div class="stat-num" id="statDuplicados" style="color:var(--accent-yellow);">0</div><div class="stat-label">Duplicados</div></div>
+                <div class="stat-box"><div class="stat-num" id="statFallidos" style="color:var(--accent-red);">0</div><div class="stat-label">Fallidos</div></div>
+            </div>
+
+            <div id="logBoxFinal" style="width:100%; max-width:700px; max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
+
+            <div style="display:flex; gap:14px; margin-top:26px;">
+                <a id="btnDescargarFallidos" class="btn-action btn-outline hidden" href="/api/descargar-fallidos">⬇ Descargar Excel de fallidos</a>
+                <button class="btn-action btn-red" onclick="volverAlInicio()">SUBIR OTRO ARCHIVO</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANEL PRINCIPAL -->
+    <div class="upload-card-rect" id="mainCard">
+        <div class="aura-container">
+            <div class="aura-ring" style="animation-delay: 0s;"></div>
+            <div class="aura-ring" style="animation-delay: 0.5s;"></div>
+            <div class="upload-icon-circle">
+                <svg width="35" height="35" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 16v-8m0 0l-3 3m3-3l3 3M5 20h14"/></svg>
+            </div>
+        </div>
+
+        <div class="flex-grow text-left">
+            <h2 style="font-size: 28px; font-weight: 800; margin-bottom: 5px; letter-spacing: -0.5px;">Categorizador Inteligente</h2>
+            <p style="color: #666; font-size: 15px;">Sube tu Excel para procesar, crear SKU's dinámicos y subir productos automáticamente.</p>
+
+            <div id="dropZoneContainer">
+                <div class="drop-zone-rect" id="dropZone">
+                    <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" class="hidden">
+                    <div class="flex items-center gap-5" style="position:relative; z-index:1;">
+                        <div class="drop-icon-box">
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--accent-red)" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        </div>
+                        <div>
+                            <p style="font-weight: 700; font-size: 17px;">Sincronizar Lista 2026</p>
+                            <p style="color: #555; font-size: 13px;">Procesamiento local + FTP imágenes + Subida automática</p>
+                            <span class="drop-hint-badge">.XLSX · .XLS · .CSV — arrastra o haz clic</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="server-note">
+                <span class="server-dot" id="serverDot"></span>
+                <span id="serverNoteText">Verificando servidor...</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_LOCAL = ''; 
+
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const globalOverlay = document.getElementById('globalOverlay');
+        const processingUI = document.getElementById('processingUI');
+        const successUI = document.getElementById('successUI');
+        const statusTitle = document.getElementById('statusTitle');
+        const statusDetail = document.getElementById('statusDetail');
+        const logBox = document.getElementById('logBox');
+        const progressFill = document.getElementById('progressFill');
+        const progressPct = document.getElementById('progressPct');
+
+        const ICONS = { info: 'ℹ', success: '✔', error: '✖', warn: '⚠', cat: '▣', loading: '' };
+        const clientLogs = new Map(); 
+        let pollHandle = null;
+
+        dropZone.onclick = () => fileInput.click();
+        fileInput.onchange = (e) => subirArchivo(e.target.files[0]);
+
+        // ============================================================
+        // SUBIDA DEL ARCHIVO AL SERVIDOR 
+        // ============================================================
+        async function subirArchivo(file) {
+            if (!file) return;
+            const fd = new FormData();
+            fd.append('file', file);
+
+            mostrarProcesando();
+            statusTitle.innerText = 'Subiendo Archivo';
+            statusDetail.innerText = `Enviando "${file.name}" al servidor...`;
+
+            try {
+                const res = await fetch('/api/subir', { method: 'POST', body: fd });
+                const data = await res.json();
+                if (!res.ok) {
+                    alert(data.error || 'No se pudo iniciar el proceso.');
+                    volverAlInicio();
+                    return;
+                }
+                iniciarPolling();
+            } catch (e) {
+                alert('No se pudo conectar con el servidor: ' + e.message);
+                volverAlInicio();
+            }
+        }
+
+        function mostrarProcesando() {
+            globalOverlay.style.display = 'flex';
+            processingUI.classList.remove('hidden');
+            processingUI.style.display = 'flex';
+            successUI.style.display = 'none';
+            logBox.innerHTML = '';
+            clientLogs.clear();
+            progressFill.style.width = '0%';
+            progressPct.innerText = '0%';
+        }
+
+        function volverAlInicio() {
+            globalOverlay.style.display = 'none';
+            fileInput.value = '';
+            if (pollHandle) clearInterval(pollHandle);
+        }
+
+        // ============================================================
+        // POLLING DEL ESTADO
+        // ============================================================
+        function iniciarPolling() {
+            if (pollHandle) clearInterval(pollHandle);
+            actualizarEstado();
+            pollHandle = setInterval(actualizarEstado, 1200);
+        }
+
+        async function actualizarEstado() {
+            let job;
+            try {
+                const res = await fetch('/api/estado', { cache: 'no-store' });
+                job = await res.json();
+            } catch (e) {
+                document.getElementById('serverDot').classList.add('off');
+                document.getElementById('serverNoteText').innerText = 'No se pudo contactar al servidor...';
+                return;
+            }
+            renderEstado(job);
+
+            if (job.terminado) {
+                clearInterval(pollHandle);
+                mostrarResumenFinal(job);
+            }
+        }
+
+        function renderEstado(job) {
+            statusTitle.innerText = job.titulo || '';
+            statusDetail.innerText = job.detalle || '';
+
+            const pct = job.total > 0 ? Math.round((job.procesados / job.total) * 100) : 0;
+            progressFill.style.width = pct + '%';
+            progressPct.innerText = pct + '%';
+
+            for (const entrada of job.logs) {
+                const previo = clientLogs.get(entrada.id);
+                if (!previo) {
+                    const el = crearTarjetaLog(entrada);
+                    logBox.appendChild(el);
+                    clientLogs.set(entrada.id, { tipo: entrada.tipo, titulo: entrada.titulo, sub: entrada.sub, el });
+                    logBox.scrollTop = logBox.scrollHeight;
+                } else if (previo.tipo !== entrada.tipo || previo.titulo !== entrada.titulo || previo.sub !== entrada.sub) {
+                    actualizarTarjetaLog(previo.el, entrada);
+                    previo.tipo = entrada.tipo; previo.titulo = entrada.titulo; previo.sub = entrada.sub;
+                }
+            }
+        }
+
+        function crearTarjetaLog(entrada) {
+            const card = document.createElement('div');
+            card.className = `track-card is-${entrada.tipo}`;
+            const iconoHtml = entrada.tipo === 'loading' ? '' : (ICONS[entrada.tipo] || '•');
+            card.innerHTML = `
+                <div class="track-icon ${entrada.tipo === 'loading' ? 'mini-spinner' : ''}">${iconoHtml}</div>
+                <div class="track-body">
+                    <div class="track-title">${entrada.titulo}</div>
+                    ${entrada.sub ? `<div class="track-sub">${entrada.sub}</div>` : ''}
+                </div>
+                <div class="track-time">${entrada.hora}</div>`;
+            return card;
+        }
+
+        function actualizarTarjetaLog(el, entrada) {
+            el.className = `track-card is-${entrada.tipo}`;
+            const icono = el.querySelector('.track-icon');
+            icono.className = `track-icon ${entrada.tipo === 'loading' ? 'mini-spinner' : ''}`;
+            icono.innerText = entrada.tipo === 'loading' ? '' : (ICONS[entrada.tipo] || '•');
+            el.querySelector('.track-title').innerText = entrada.titulo;
+            let sub = el.querySelector('.track-sub');
+            if (entrada.sub) {
+                if (!sub) {
+                    sub = document.createElement('div');
+                    sub.className = 'track-sub';
+                    el.querySelector('.track-body').appendChild(sub);
+                }
+                sub.innerText = entrada.sub;
+            }
+            el.querySelector('.track-time').innerText = entrada.hora;
+        }
+
+        function mostrarResumenFinal(job) {
+            processingUI.classList.add('hidden');
+            processingUI.style.display = 'none';
+
+            document.getElementById('statCategorias').innerText = job.stats.categorias;
+            document.getElementById('statExitosos').innerText = job.stats.exitosos;
+            document.getElementById('statDuplicados').innerText = job.stats.duplicados;
+            document.getElementById('statFallidos').innerText = job.stats.fallidos;
+
+            document.getElementById('successInfo').innerText = job.error
+                ? `Se detuvo por un error: ${job.error}`
+                : `${job.stats.exitosos} productos subidos, ${job.stats.duplicados} duplicados omitidos, ${job.stats.fallidos} fallidos.`;
+
+            const logFinal = document.getElementById('logBoxFinal');
+            logFinal.innerHTML = '';
+            for (const entrada of job.logs) {
+                logFinal.appendChild(crearTarjetaLog(entrada));
+            }
+
+            const btn = document.getElementById('btnDescargarFallidos');
+            if ((job.reporte_fallidos || []).length > 0) {
+                btn.classList.remove('hidden');
+            } else {
+                btn.classList.add('hidden');
+            }
+
+            globalOverlay.style.display = 'flex';
+            successUI.style.display = 'flex';
+        }
+
+        async function verificarAlCargar() {
+            try {
+                const res = await fetch('/api/estado', { cache: 'no-store' });
+                const job = await res.json();
+
+                document.getElementById('serverDot').classList.remove('off');
+                document.getElementById('serverNoteText').innerText = 'Servidor conectado — listo para procesar.';
+
+                if (job.activo) {
+                    mostrarProcesando();
+                    renderEstado(job);
+                    iniciarPolling();
+                } else if (job.terminado && (job.logs || []).length > 0) {
+                    mostrarProcesando(); 
+                    mostrarResumenFinal(job);
+                }
+            } catch (e) {
+                document.getElementById('serverDot').classList.add('off');
+                document.getElementById('serverNoteText').innerText = 'No se pudo contactar al servidor.';
+            }
+        }
+
+        window.onload = verificarAlCargar;
+    </script>
+</body>
+</html>
